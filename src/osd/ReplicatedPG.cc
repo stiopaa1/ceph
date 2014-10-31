@@ -2645,7 +2645,7 @@ ReplicatedPG::RepGather *ReplicatedPG::trim_object(const hobject_t &coid)
       delta.num_whiteouts--;
     }
     delta.num_object_clones--;
-    info.stats.stats.add(delta, obc->obs.oi.category);
+    info.stats.stats.add(delta);
     obc->obs.exists = false;
 
     snapset.clones.erase(p);
@@ -5476,7 +5476,7 @@ int ReplicatedPG::prepare_transaction(OpContext *ctx)
 
   // read-op?  done?
   if (ctx->op_t->empty() && !ctx->modify) {
-    unstable_stats.add(ctx->delta_stats, ctx->obc->obs.oi.category);
+    unstable_stats.add(ctx->delta_stats);
     return result;
   }
 
@@ -5676,7 +5676,7 @@ void ReplicatedPG::finish_ctx(OpContext *ctx, int log_op_type, bool maintain_ssc
     ctx->obc->ssc->snapset = ctx->new_snapset;
   }
 
-  info.stats.stats.add(ctx->delta_stats, ctx->obs->oi.category);
+  info.stats.stats.add(ctx->delta_stats);
 
   for (set<pg_shard_t>::iterator i = backfill_targets.begin();
        i != backfill_targets.end();
@@ -5684,16 +5684,15 @@ void ReplicatedPG::finish_ctx(OpContext *ctx, int log_op_type, bool maintain_ssc
     pg_shard_t bt = *i;
     pg_info_t& pinfo = peer_info[bt];
     if (soid <= pinfo.last_backfill)
-      pinfo.stats.stats.add(ctx->delta_stats, ctx->obs->oi.category);
+      pinfo.stats.stats.add(ctx->delta_stats);
     else if (soid <= last_backfill_started)
-      pending_backfill_updates[soid].stats.add(ctx->delta_stats,
-					       ctx->obs->oi.category);
+      pending_backfill_updates[soid].stats.add(ctx->delta_stats);
   }
 
   if (scrubber.active) {
     assert(soid < scrubber.start || soid >= scrubber.end);
     if (soid < scrubber.start)
-      scrub_cstat.add(ctx->delta_stats, ctx->obs->oi.category);
+      scrub_cstat.add(ctx->delta_stats);
   }
 }
 
@@ -7847,8 +7846,6 @@ void ReplicatedPG::add_object_context_to_pg_stat(ObjectContextRef obc, pg_stat_t
 
   // add it in
   pgstat->stats.sum.add(stat);
-  if (oi.category.length())
-    pgstat->stats.cat_sum[oi.category].add(stat);
 }
 
 void ReplicatedPG::kick_object_context_blocked(ObjectContextRef obc)
@@ -11352,7 +11349,7 @@ void ReplicatedPG::hit_set_persist()
 
   hit_set_trim(repop, max);
 
-  info.stats.stats.add(ctx->delta_stats, string());
+  info.stats.stats.add(ctx->delta_stats);
 
   simple_repop_submit(repop);
 }
@@ -12297,8 +12294,7 @@ void ReplicatedPG::_scrub(ScrubMap& scrubmap)
       next_clone = hobject_t();
     }
 
-    string cat; // fixme
-    scrub_cstat.add(stat, cat);
+    scrub_cstat.add(stat);
   }
 
   if (!next_clone.is_min() &&
