@@ -7136,6 +7136,34 @@ void ReplicatedPG::issue_repop(RepGather *repop, utime_t now)
     }
   }
 
+  if (is_degraded_object(soid)) {
+    assert(!is_missing_object(soid));
+    for (vector<pg_log_entry_t>::iterator j = repop->ctx->log.begin();
+	 j != repop->ctx->log.end();
+	 ++j) {
+      for (set<pg_shard_t>::const_iterator peer = actingbackfill.begin();
+	   peer != actingbackfill.end();
+	   ++peer) {
+	if (*peer == pg_whoami) {
+	  assert(!is_missing_object(j->soid));
+	  continue;
+	}
+	map<pg_shard_t, pg_missing_t>::iterator pm = peer_missing.find(*peer);
+	assert(pm != peer_missing.end());
+	if (!pm->second.is_missing(soid)) {
+	  assert(!pm->second.is_missing(j->soid));
+	  continue;
+	}
+	pm->second.add_next_event(*j);
+      }
+      missing_loc.rebuild_object_location(
+	j->soid,
+	actingbackfill,
+	get_all_missing(),
+	get_all_info());
+    }
+  }
+
   Context *on_all_commit = new C_OSD_RepopCommit(this, repop);
   Context *on_all_applied = new C_OSD_RepopApplied(this, repop);
   Context *onapplied_sync = new C_OSD_OndiskWriteUnlock(
