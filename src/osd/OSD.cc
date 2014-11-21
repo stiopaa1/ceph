@@ -4145,11 +4145,7 @@ void OSD::RemoveWQ::_process(
     return;
 
   ObjectStore::Transaction *t = new ObjectStore::Transaction;
-  PGLog::clear_info_log(
-    pg->info.pgid,
-    OSD::make_infos_oid(),
-    pg->log_oid,
-    t);
+  PGLog::clear_info_log(pg->info.pgid, t);
 
   for (list<coll_t>::iterator i = colls_to_remove.begin();
        i != colls_to_remove.end();
